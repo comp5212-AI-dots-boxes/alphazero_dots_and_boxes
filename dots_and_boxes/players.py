@@ -41,10 +41,9 @@ class GreedyPlayer(DotsAndBoxesPlayerBase):
                         for line in four_lines:
                             available_lines.discard(state.board.pos_to_line_id(line))
 
-        choices_for_greedy = []
         if len(best_choices) > 0:
             choices_for_greedy = best_choices
-        if len(available_lines) > 0:
+        elif len(available_lines) > 0:
             choices_for_greedy = list(available_lines)
         else:
             choices_for_greedy = list(state.get_available_actions())
