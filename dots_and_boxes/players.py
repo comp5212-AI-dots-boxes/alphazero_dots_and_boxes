@@ -4,6 +4,8 @@ import random
 import copy
 import numpy as np
 
+from MCTS import MCTSPlayer
+
 
 class RandomPlayer(DotsAndBoxesPlayerBase):
 
@@ -12,6 +14,9 @@ class RandomPlayer(DotsAndBoxesPlayerBase):
 
     def copy(self):
         return RandomPlayer()
+
+    def __str__(self):
+        return "Random {}".format(self.player)
 
 
 class GreedyPlayer(DotsAndBoxesPlayerBase):
@@ -57,3 +62,50 @@ class GreedyPlayer(DotsAndBoxesPlayerBase):
 
     def copy(self):
         return GreedyPlayer()
+
+    def __str__(self):
+        return "Greedy {}".format(self.player)
+
+
+class HumanPlayer(object):
+    """
+    human player
+    """
+    def get_action(self, state: DotsAndBoxes, **kwargs):
+        try:
+            print("move format h, x, y, h=0 is the horizontal line, h=1 is the vertical line")
+            location = input("Your move: ")
+            if isinstance(location, str):  # for python3
+                location = [int(n, 10) for n in location.split(",")]
+            # move = board.location_to_move(location)
+            move = state.board.pos_to_line_id(location)
+        except Exception as e:
+            move = -1
+        if move == -1 or move not in state.board.available_lines:
+            print("invalid move")
+            move = self.get_action(state)
+        return move
+
+    def __str__(self):
+        return "Human {}".format(self.player)
+
+
+def test():
+    #######################
+    #  Play with pure MCTS Player
+    #######################
+    size = 5
+    try:
+        game = DotsAndBoxes(size)
+
+        mcts_player = MCTSPlayer(c_puct=5, n_playout=500)  # just a simple try
+
+        human = HumanPlayer()
+
+        game.start_play(human, mcts_player, start_player=1, is_shown=1)
+    except KeyboardInterrupt:
+        print('\n\rquit')
+
+
+if __name__ == '__main__':
+    test()

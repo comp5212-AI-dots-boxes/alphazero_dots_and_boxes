@@ -183,9 +183,10 @@ class DotsAndBoxes(GameBase):
         else:
             self.board = board
         self.cur_player_id = 1
+        self.players = [1, 2]  # player1 and player2
 
     def switch_player(self):
-        # only 1 or 2
+        """ only 1 or 2 """
         self.cur_player_id = 3 - self.cur_player_id
 
     @property
@@ -247,6 +248,37 @@ class DotsAndBoxes(GameBase):
         self.board = DotsAndBoxesBoard(self.size)
         self.cur_player_id = 1
 
+    def start_play(self, player1, player2, start_player=1, is_shown=1):
+        """start a game between two players"""
+        if start_player not in (1, 2):
+            raise Exception('start_player should be either 1 (player1 first) '
+                            'or 2 (player2 first)')
+
+        p1, p2 = self.players
+        # player1.set_player_ind(p1)
+        # player2.set_player_ind(p2)
+        players = {p1: player1, p2: player2}  # convert to a set
+        if is_shown:
+            # self.graphic(self.board, player1.player, player2.player)
+            print(self.board.state_str())
+        while True:
+            current_player = self.current_player_id
+            player_in_turn = players[current_player]
+            move = player_in_turn.get_action(self)
+            # self.board.do_move(move)
+            self.act(move, verbose=1)
+
+            # end, winner = self.board.game_end()
+            end = self.is_end()
+            if end:
+                winner = self.get_winner()
+                if is_shown:
+                    if winner != -1:
+                        print("Game end. Winner is", players[winner])
+                    else:
+                        print("Game end. Tie")
+                return winner
+
 
 class DotsAndBoxesPlayerBase(Player):
 
@@ -262,4 +294,7 @@ class DotsAndBoxesPlayerBase(Player):
         I do not use deepcopy here because we do not need to deepcopy a game board.
         But please copy everything needed except _board
         """
+        raise NotImplementedError()
+
+    def __str__(self):
         raise NotImplementedError()

@@ -51,7 +51,10 @@ class GameBase:
 class Player:
 
     def __init__(self):
-        pass
+        self.player = None
+
+    def set_player_ind(self, p):
+        self.player = p
 
     def get_action(self, state: GameBase, **kwargs):
         raise NotImplementedError()
@@ -60,11 +63,8 @@ class Player:
         verbose = kwargs.get('verbose', 0)
         state.act(self.get_action(state), verbose=verbose)
 
-
-class RandomPlayer(Player):
-
-    def get_action(self, state: GameBase, **kwargs):
-        return random.choice(list(state.get_available_actions()))
+    def __str__(self):
+        raise NotImplementedError()
 
 
 def self_play_with_statistics(game: GameBase, player: Player, temp=1e-3, verbose=0):
@@ -140,18 +140,18 @@ class GameManager:
             self.gamers[self.game.current_player_id].play(self.game, **kwargs)
         return self.game.get_winner()
 
-# if __name__ == '__main__':
-#     from MCTS import MCTSPlayer
-#     from dots_and_boxes.players import GreedyPlayer
-#     # from gomoku import Gomoku
-#     # game = Gomoku()
-#     # game.init_board()
-#     from dots_and_boxes import DotsAndBoxes
-#     game = DotsAndBoxes(4)
-#     player = MCTSPlayer(n_playout=10000)
-#     random_player = RandomPlayer()
-#     greedy_palyer = GreedyPlayer()
-#
-#     # self_play_with_statistics(game, player, verbose=1)
-#     gm = GameManager(game, [None, player, greedy_palyer], 1)
-#     print(gm.play())
+if __name__ == '__main__':
+    from MCTS import MCTSPlayer
+    from dots_and_boxes.players import GreedyPlayer
+    # from gomoku import Gomoku
+    # game = Gomoku()
+    # game.init_board()
+    from dots_and_boxes import DotsAndBoxes
+    game = DotsAndBoxes(5)
+    player = MCTSPlayer(n_playout=10000)
+    random_player = RandomPlayer()
+    greedy_player = GreedyPlayer()
+
+    self_play_with_statistics(game, player, verbose=1)
+    gm = GameManager(game, [None, player, greedy_player], 1)
+    print(gm.play())
