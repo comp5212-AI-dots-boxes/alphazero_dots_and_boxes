@@ -3,7 +3,7 @@ The game of dots and boxes
 """
 import numpy as np
 from Game import GameBase, Player
-import copy
+import mcts
 
 
 class DotsAndBoxesBoard:
@@ -15,7 +15,7 @@ class DotsAndBoxesBoard:
         if copy_dict is None:
             # there should be (size+1)*size horizontal lines, and size*(size+1) vertical lines
             # initialize the board lines with a (size+1)*(size+1)*2 matrix
-            # (x,y,h), h == 0 <=> horizontal lines
+            # (h,x,y), h == 0 <=> horizontal lines
             self.lines = np.zeros((2, size + 1, size + 1), dtype=np.float)
             # 0: not be conquered; 1: player1 conquered; 2: player2 conquered
             self.boxes = np.zeros((size + 1, size + 1), dtype=np.int)
@@ -278,6 +278,39 @@ class DotsAndBoxes(GameBase):
                     else:
                         print("Game end. Tie")
                 return winner
+
+    def stage1(self):
+        available_lines = self.get_available_actions().copy()
+        for x in range(self.size):
+            for y in range(self.size):
+                if self.board.boxes[x][y] == 0:
+                    # check 4 lines of this box
+                    four_lines = ((0, x, y), (1, x, y), (0, x + 1, y), (1, x, y + 1))
+                    num_empty = 4 - (
+                                self.board.lines[0][x][y] + self.board.lines[1][x][y] + self.board.lines[0][x + 1][y] +
+                                self.board.lines[1][x][y + 1])
+                    if num_empty <= 2:
+                        # it will give advantage to opponent
+                        for line in four_lines:
+                            available_lines.discard(self.board.pos_to_line_id(line))
+        return len(available_lines) > 0
+
+    def stage2(self):
+        return not self.stage1()
+
+    # def getPossibleActions(self):
+    #     return list(self.get_available_actions())
+    #
+    # def takeAction(self, action):
+    #     tmp = self.copy()
+    #     tmp.act(action)
+    #     return tmp
+    #
+    # def isTerminal(self):
+    #     return self.is_end()
+    #
+    # def getReward(self):
+    #     return self.board.scores[1] - self.board.scores[2]
 
 
 class DotsAndBoxesPlayerBase(Player):

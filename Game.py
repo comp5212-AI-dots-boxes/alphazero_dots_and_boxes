@@ -98,12 +98,20 @@ def auto_play_with_statistics(game: GameBase, players: list, temp=1e-3, verbose=
     states, mcts_probs, current_players = [], [], []
     mcts_player_id = 1
     while True:
-        if mcts_player_id == game.current_player_id:
-            action, action_probs = players[game.current_player_id].get_action(game, temp=temp, return_prob=1)
-        else:
-            action, action_probs = players[game.current_player_id].get_action(game, temp=temp, return_prob=1)
-            players[mcts_player_id].mcts.update_with_move(action)
-        # store the data
+        # if mcts_player_id == game.current_player_id:
+        #     action, action_probs = players[game.current_player_id].get_action(game, temp=temp, return_prob=1)
+        #     # store the data
+        #     # states.append(game.get_current_state())
+        #     # mcts_probs.append(action_probs)
+        #     # current_players.append(game.current_player_id)
+        # else:
+        #     action, action_probs = players[game.current_player_id].get_action(game, temp=temp, return_prob=1)
+        #     players[mcts_player_id].mcts.update_with_move(action)
+
+        player_id = game.current_player_id
+        action, action_probs = players[game.current_player_id].get_action(game, temp=temp, return_prob=1)
+        players[3 - player_id].mcts.update_with_move(action)
+        # # store the data
         states.append(game.get_current_state())
         mcts_probs.append(action_probs)
         current_players.append(game.current_player_id)
@@ -140,18 +148,20 @@ class GameManager:
             self.gamers[self.game.current_player_id].play(self.game, **kwargs)
         return self.game.get_winner()
 
+
 if __name__ == '__main__':
-    from MCTS import MCTSPlayer
+    from dots_and_boxes import DotsAndBoxes
     from dots_and_boxes.players import GreedyPlayer
+    from MCTS import MCTSPlayer
     # from gomoku import Gomoku
     # game = Gomoku()
     # game.init_board()
-    from dots_and_boxes import DotsAndBoxes
-    game = DotsAndBoxes(5)
-    player = MCTSPlayer(n_playout=10000)
-    random_player = RandomPlayer()
+
+    game = DotsAndBoxes(4)
+    player = MCTSPlayer(n_playout=1000)
+    # random_player = RandomPlayer()
     greedy_player = GreedyPlayer()
 
-    self_play_with_statistics(game, player, verbose=1)
+    # self_play_with_statistics(game, player, verbose=1)
     gm = GameManager(game, [None, player, greedy_player], 1)
     print(gm.play())
