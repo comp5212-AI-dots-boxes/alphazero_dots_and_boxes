@@ -59,7 +59,7 @@ class PolicyValueNet:
         policy_net = Conv2D(filters=8, kernel_size=(1, 1), data_format="channels_first", activation="relu",
                             kernel_regularizer=l2(self.l2_const))(network)
         policy_net = Flatten()(policy_net)
-        policy_net = Dense(128, activation="relu", kernel_regularizer=l2(self.l2_const))(policy_net)
+        # policy_net = Dense(128, activation="relu", kernel_regularizer=l2(self.l2_const))(policy_net)
         self.policy_net = Dense(self.action_spec, activation="softmax", kernel_regularizer=l2(self.l2_const))(
             policy_net)
         # state value layers

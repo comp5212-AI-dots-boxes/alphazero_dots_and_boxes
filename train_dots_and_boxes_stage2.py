@@ -1,5 +1,4 @@
-from dots_and_boxes import DotsAndBoxes as MyGame, PolicyValueNet
-# from gomoku import Gomoku as MyGame, PolicyValueNet
+from dots_and_boxes import DotsAndBoxes, PolicyValueNet, DotsAndBoxesPlayerBase
 import random
 import numpy as np
 from collections import defaultdict, deque
@@ -9,19 +8,21 @@ from dots_and_boxes.MCTS import MCTSPlayer as MCTSPure, MCTSPlayer2 as MCTSPure2
 from dots_and_boxes.players import GreedyPlayer, RandomPlayer
 from Game import self_play_with_statistics, auto_play_with_statistics, GameManager
 from multiprocessing import Queue, Process
-from mcts import mcts
+
+
+def run_until_stage2(game: DotsAndBoxes, player: DotsAndBoxesPlayerBase, **kwargs):
+    while game.stage1():
+        player.play(game, **kwargs)
 
 
 class TrainPipeline:
     def __init__(self, init_model=None):
         # params of the board and the game
         self.size = 3
-        self.board_height, self.board_width = 8, 8
-        # self.game = MyGame(width=self.board_width, height=self.board_height, n_in_row=5)
-        self.game = MyGame(self.size)
+        self.game = DotsAndBoxes(self.size)
         # self.board = self.game.board
         # training params
-        self.learn_rate = 2e-3
+        self.learn_rate = 5e-3
         self.lr_multiplier = 1.0  # adaptively adjust the learning rate based on KL
         self.temp = 1.0  # the temperature param
         self.n_playout = 400  # num of simulations for each move
@@ -49,9 +50,9 @@ class TrainPipeline:
                                       n_playout=self.n_playout,
                                       is_selfplay=1)
         self.mcts_player2 = MCTSPlayer(self.policy_value_net.policy_value_fn, 2,
-                                      c_puct=self.c_puct,
-                                      n_playout=self.n_playout,
-                                      is_selfplay=1)
+                                       c_puct=self.c_puct,
+                                       n_playout=self.n_playout,
+                                       is_selfplay=1)
         self.mcts_players = [None, self.mcts_player, self.mcts_player2]
 
     def get_equi_data(self, play_data):
@@ -81,9 +82,10 @@ class TrainPipeline:
 
     def collect_selfplay_data(self, n_games=1):
         """collect self-play data for training"""
-        # greedy_player = GreedyPlayer()
+        greedy_player = GreedyPlayer()
         for i in range(n_games):
             self.game.reset()
+            run_until_stage2(self.game, greedy_player)
             winner, play_data = self_play_with_statistics(self.game, self.mcts_player, temp=self.temp)
             # winner, play_data = auto_play_with_statistics(self.game, self.mcts_players, temp=self.temp)
             play_data = list(play_data)[:]
@@ -113,7 +115,7 @@ class TrainPipeline:
             if kl > self.kl_targ * 4:  # early stopping if D_KL diverges badly
                 break
         # adaptively adjust the learning rate
-        if kl > self.kl_targ * 2 and self.lr_multiplier > 0.1:
+        if kl > self.kl_targ * 2 and self.lr_multiplier > 0.01:
             self.lr_multiplier /= 1.5
         elif kl < self.kl_targ / 2 and self.lr_multiplier < 10:
             self.lr_multiplier *= 1.5
@@ -145,26 +147,29 @@ class TrainPipeline:
         """
         current_mcts_player = MCTSPlayer(self.policy_value_net.policy_value_fn, 1,
                                          c_puct=self.c_puct,
-                                         n_playout=1000)
+                                         n_playout=self.n_playout)
         # current_mcts_player = MCTSPure(2, c_puct=self.c_puct, n_playout=1000)
         # current_mcts_player = MCTSPure2()
         opp_player = GreedyPlayer()
         # opp_player = MCTSPure(2, c_puct=self.c_puct, n_playout=400)
         # opp_player = RandomPlayer()
         win_cnt = defaultdict(int)
-        gm = GameManager(self.game, [None, opp_player, current_mcts_player], 1)
+        gm = GameManager(self.game, [None, current_mcts_player, opp_player], 1)
         for i in range(n_games):
             gm.game.reset()
             if test_mode:
+                run_until_stage2(gm.game, GreedyPlayer(), verbose=1)
+                print('enter stage2, current player: P' + str(gm.game.current_player_id))
                 winner = gm.play(verbose=1)
                 print('winner : ' + str(winner))
             else:
+                run_until_stage2(gm.game, GreedyPlayer())
                 winner = gm.play()
             win_cnt[winner] += 1
-        win_ratio = 1.0 * (win_cnt[2] + 0.5 * win_cnt[0]) / n_games
+        win_ratio = 1.0 * (win_cnt[1] + 0.5 * win_cnt[0]) / n_games
         print("num_playouts:{}, win: {}, lose: {}, tie:{}".format(
             self.pure_mcts_playout_num,
-            win_cnt[2], win_cnt[1], win_cnt[0]))
+            win_cnt[1], win_cnt[2], win_cnt[0]))
         return win_ratio
 
     def run(self):
@@ -205,7 +210,7 @@ def test_model(model_file):
 
 
 if __name__ == '__main__':
-    # training_pipeline = TrainPipeline('current_policy.model')
-    # training_pipeline.run()
+    training_pipeline = TrainPipeline()
+    training_pipeline.run()
     # test_model(None)
-    test_model('current_policy.model')
+    # test_model('3x3-player1-greedy.model')
