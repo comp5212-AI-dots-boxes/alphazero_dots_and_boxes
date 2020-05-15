@@ -4,10 +4,16 @@ import random
 import copy
 import numpy as np
 
-from MCTS import MCTSPlayer
+from MCTS_improve import MCTSPlayer as MCTSPlayer_improve
+from MCTS import MCTSPlayer as MCTSPlayer
 
 
 class RandomPlayer(DotsAndBoxesPlayerBase):
+    def __init__(self):
+        self.player = None
+
+    def set_player_ind(self, p):
+        self.player = p
 
     def get_action(self, state: GameBase, **kwargs):
         return random.choice(list(state.get_available_actions()))
@@ -20,6 +26,11 @@ class RandomPlayer(DotsAndBoxesPlayerBase):
 
 
 class GreedyPlayer(DotsAndBoxesPlayerBase):
+    def __init__(self):
+        self.player = None
+
+    def set_player_ind(self, p):
+        self.player = p
 
     def get_action(self, state: DotsAndBoxes, **kwargs):
         return_prob = kwargs.get('return_prob', 0)
@@ -71,6 +82,12 @@ class HumanPlayer(object):
     """
     human player
     """
+    def __init__(self):
+        self.player = None
+
+    def set_player_ind(self, p):
+        self.player = p
+
     def get_action(self, state: DotsAndBoxes, **kwargs):
         try:
             print("move format h, x, y, h=0 is the horizontal line, h=1 is the vertical line")
@@ -94,18 +111,21 @@ def test():
     #######################
     #  Play with pure MCTS Player
     #######################
-    size = 5
+    size = 3
     try:
         game = DotsAndBoxes(size)
 
-        mcts_player = MCTSPlayer(c_puct=5, n_playout=500)  # just a simple try
+        mcts_player1 = MCTSPlayer(c_puct=5, n_playout=500)  # just a simple try
 
+        mcts_player2 = MCTSPlayer_improve(c_puct=5, n_playout=500)
         human = HumanPlayer()
+        rand = RandomPlayer()
 
-        game.start_play(human, mcts_player, start_player=1, is_shown=1)
+        game.start_play(mcts_player1, mcts_player2, start_player=1, is_shown=1)
     except KeyboardInterrupt:
         print('\n\rquit')
 
 
 if __name__ == '__main__':
-    test()
+    for i in range(10):
+        test()

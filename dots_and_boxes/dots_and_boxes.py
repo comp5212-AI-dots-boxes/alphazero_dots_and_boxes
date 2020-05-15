@@ -169,6 +169,19 @@ class DotsAndBoxesBoard:
         })
         return new_board
 
+    def state_id(self):
+        sid = 0
+        for index in range(self.end_step):
+            h, x, y = self.line_id_to_pos(index)
+            if not self.lines[h][x][y] == 0:
+                sid += 1 << index
+        return sid
+
+    #def symmetrical_id(self):
+    #    """
+    #    One symmetrical_id corresponds to multiple state ids
+    #    """
+
 
 class DotsAndBoxes(GameBase):
 
@@ -255,8 +268,8 @@ class DotsAndBoxes(GameBase):
                             'or 2 (player2 first)')
 
         p1, p2 = self.players
-        # player1.set_player_ind(p1)
-        # player2.set_player_ind(p2)
+        player1.set_player_ind(p1)
+        player2.set_player_ind(p2)
         players = {p1: player1, p2: player2}  # convert to a set
         if is_shown:
             # self.graphic(self.board, player1.player, player2.player)
@@ -266,17 +279,21 @@ class DotsAndBoxes(GameBase):
             player_in_turn = players[current_player]
             move = player_in_turn.get_action(self)
             # self.board.do_move(move)
-            self.act(move, verbose=1)
+            self.act(move, verbose=is_shown)
 
             # end, winner = self.board.game_end()
             end = self.is_end()
             if end:
                 winner = self.get_winner()
                 if is_shown:
-                    if winner != -1:
+                    if winner != 0:
                         print("Game end. Winner is", players[winner])
                     else:
                         print("Game end. Tie")
+                if winner != 0:
+                    print("Game end. Winner is", players[winner])
+                else:
+                    print("Game end. Tie")
                 return winner
 
 
