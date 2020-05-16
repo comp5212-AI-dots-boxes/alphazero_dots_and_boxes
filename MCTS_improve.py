@@ -5,6 +5,7 @@ improved by turning tree to acyclic directed graph
 import numpy as np
 from Game import GameBase, Player
 from dots_and_boxes import DotsAndBoxes
+from dots_and_boxes.players import GreedyPlayer
 
 
 def rollout_policy_fn(game: GameBase):
@@ -27,6 +28,7 @@ def policy_value_fn(game: GameBase):
 class StateSet(object):
     def __init__(self):
         self.state_id2node = {}  # each item is a map from state_id to TreeNode
+        self.board_size = 0
 
     @staticmethod
     def state_id_act(state_id, move):
@@ -36,13 +38,34 @@ class StateSet(object):
             print("WARNING: repeated move_id")
         return new_id | move_id
 
+    def pos_to_line_id(self, pos):
+        half_split = (self.board_size + 1) * self.board_size
+        h, x, y = pos
+        if h == 0:
+            return x * self.board_size + y
+        else:
+            return half_split + x * (self.board_size + 1) + y
+
+    def boxes_in_state(self, state_id):
+        boxes_num = 0
+        for x in range(self.board_size):
+            for y in range(self.board_size):
+                line_id1 = self.pos_to_line_id((0, x, y))
+                line_id2 = self.pos_to_line_id((1, x, y))
+                line_id3 = self.pos_to_line_id((0, x + 1, y))
+                line_id4 = self.pos_to_line_id((1, x, y + 1))
+                if (state_id & 1 << line_id1) != 0 and (state_id & 1 << line_id2) != 0 and \
+                        (state_id & 1 << line_id3) != 0 and (state_id & 1 << line_id4) != 0:
+                    boxes_num += 1
+        return boxes_num
+
 
 class TreeNode(object):
     """A node in the MCTS tree. Each node keeps track of its own value Q,
     prior probability P, and its visit-count-adjusted prior score u.
     """
 
-    def __init__(self, prev_move, parent, prior_p, state_id, state_set: dict):
+    def __init__(self, prev_move, parent, prior_p, state_id, state_set: StateSet):
         if parent is not None:
             self._parent = {prev_move: parent}  # map from previous move to parent node
         else:
@@ -54,10 +77,11 @@ class TreeNode(object):
         self._u = 0
         self._P = prior_p
 
-        self._state_id = state_id
-        self._state_set = state_set
-        self._prev_move = prev_move  # one of parents --prev_move--> self
-        self._last_move = -1  # self --last_move--> one of children
+        self.state_id = state_id
+        self.state_set = state_set
+        self.state_id2node = state_set.state_id2node
+        self.prev_move = prev_move  # one of parents --prev_move--> self
+        self.last_move = -1  # self --last_move--> one of children
 
     def add_parent(self, prev_move, parent):
         self._parent[prev_move] = parent
@@ -85,17 +109,17 @@ class TreeNode(object):
         for action, prob in action_priors:
             if action not in self._children:
                 # get state_id of the child
-                new_id = StateSet.state_id_act(self._state_id, action)
+                new_id = StateSet.state_id_act(self.state_id, action)
                 # check if this child exists
-                if new_id in self._state_set.keys():
-                    node = self._state_set[new_id]
+                if new_id in self.state_id2node.keys():
+                    node = self.state_id2node[new_id]
                     node.add_parent(action, self)
                     self._children[action] = node
                     self._children_n_visits[action] = 0
                 else:  # else if this child dose not exist
-                    self._children[action] = TreeNode(action, self, prob, new_id, self._state_set)
+                    self._children[action] = TreeNode(action, self, prob, new_id, self.state_set)
                     self._children_n_visits[action] = 0
-                    self._state_set[new_id] = self._children[action]
+                    self.state_id2node[new_id] = self._children[action]
 
     def select(self, c_puct):
         """Select action among children that gives maximum action value Q
@@ -103,8 +127,8 @@ class TreeNode(object):
         Return: A tuple of (action, next_node)
         """
         move, child = max(self._children.items(), key=lambda act_node: act_node[1].get_value(c_puct))
-        self._last_move = move
-        child._prev_move = move
+        self.last_move = move
+        child.prev_move = move
         return move, child
 
     def update(self, leaf_value):
@@ -113,7 +137,7 @@ class TreeNode(object):
             perspective.
         """
         # Count visit.
-        self.add_visit(self._last_move)
+        self.add_visit(self.last_move)
         # Update Q, a running average of values for all visits.
         self._Q += 1.0 * (leaf_value - self._Q) / self._n_visits
 
@@ -121,8 +145,14 @@ class TreeNode(object):
         """Like a call to update(), but applied recursively for all ancestors.
         """
         # If it is not root, this node's parent should be updated first.
-        if self._prev_move in self._parent.keys():
-            self._parent[self._prev_move].update_recursive(-leaf_value)
+        if self.prev_move in self._parent.keys():
+            parent_node = self._parent[self.prev_move]
+            boxes_before = self.state_set.boxes_in_state(parent_node.state_id)
+            boxes_after = self.state_set.boxes_in_state(self.state_id)
+            if boxes_after > boxes_before:
+                self._parent[self.prev_move].update_recursive(leaf_value)
+            else:
+                self._parent[self.prev_move].update_recursive(-leaf_value)
         self.update(leaf_value)
 
     def get_value(self, c_puct):
@@ -134,9 +164,9 @@ class TreeNode(object):
         """
         path_visits = 0
         parent_visits = 0
-        if self._prev_move in self._parent.keys():
-            path_visits += self._parent[self._prev_move]._children_n_visits[self._prev_move]
-            parent_visits += self._parent[self._prev_move]._n_visits
+        if self.prev_move in self._parent.keys():
+            path_visits += self._parent[self.prev_move]._children_n_visits[self.prev_move]
+            parent_visits += self._parent[self.prev_move]._n_visits
 
         self._u = (c_puct * self._P * np.sqrt(parent_visits) / (1 + path_visits))
         return self._Q + self._u
@@ -167,7 +197,7 @@ class MCTS(object):
         self._state_set = StateSet()
         # self._root = TreeNode(None, 1.0)
         # (prev_move, parent, prior_p, state_id, state_set: dict)
-        self._root = TreeNode(-1, None, 1.0, 0, self._state_set.state_id2node)
+        self._root = TreeNode(-1, None, 1.0, 0, self._state_set)
 
         self._policy = policy_value_fn
         self._c_puct = c_puct
@@ -200,12 +230,17 @@ class MCTS(object):
         returning +1 if the current player wins, -1 if the opponent wins,
         and 0 if it is a tie.
         """
+        greedy_player = GreedyPlayer()
+
+        self._state_set.board_size = state.size
         player = state.current_player_id
         for i in range(limit):
             if state.is_end():
                 break
-            action_probs = rollout_policy_fn(state)  # random in pure MCTS
-            max_action = max(action_probs, key=lambda a: a[1])[0]
+
+            # action_probs = rollout_policy_fn(state)  # random in pure MCTS
+            # max_action = max(action_probs, key=lambda a: a[1])[0]
+            max_action = greedy_player.get_action(state)
             state.act(max_action)
         else:
             # If no break from the loop, issue a warning.
@@ -222,8 +257,8 @@ class MCTS(object):
         Return: the selected action
         """
         # init the root node
-        self._root._state_id = state.board.state_id()
-        self._state_set.state_id2node[self._root._state_id] = self._root
+        self._root.state_id = state.board.state_id()
+        self._state_set.state_id2node[self._root.state_id] = self._root
         for n in range(self._n_playout):
             self._playout(state.copy())
         return max(self._root._children.items(), key=lambda act_node: act_node[1]._n_visits)[0]
@@ -238,8 +273,8 @@ class MCTS(object):
         else:
             # self._root = TreeNode(None, 1.0)
             # (prev_move, parent, prior_p, state_id, state_set: dict)
-            # self._state_set.state_id2node.clear()  # FIXME: should the search graph be kept?
-            self._root = TreeNode(-1, None, 1.0, 0, self._state_set.state_id2node)
+            self._state_set.state_id2node.clear()  # FIXME: should the search graph be cleaned?
+            self._root = TreeNode(-1, None, 1.0, 0, self._state_set)
 
     def __str__(self):
         return "MCTS"
