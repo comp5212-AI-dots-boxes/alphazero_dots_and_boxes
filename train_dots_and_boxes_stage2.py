@@ -210,4 +210,4 @@ if __name__ == '__main__':
     # training_pipeline = TrainPipeline()
     # training_pipeline.run()
     # test_model(None)
-    test_model('3x3-stage2-greedy.model')
+    test_model('3x3-stage2.model')

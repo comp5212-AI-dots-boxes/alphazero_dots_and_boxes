@@ -109,13 +109,10 @@ class TrainPipeline:
 
     def collect_selfplay_data(self, n_games=1):
         """collect self-play data for training"""
-        greedy_player = GreedyPlayer()
         for i in range(n_games):
             self.game.reset()
             self.mcts_player.reset_player(self.game.current_player_id)
             winner, play_data = self_play_until_stage2_with_statistics(self.game, self.mcts_player, temp=self.temp)
-            # winner, play_data = self_play_with_statistics(self.game, self.mcts_player, temp=self.temp)
-            # winner, play_data = auto_play_with_statistics(self.game, [None, self.mcts_player, greedy_player], temp=self.temp)
             play_data = list(play_data)[:]
             self.episode_len = len(play_data)
             # augment the data
@@ -184,14 +181,16 @@ class TrainPipeline:
             game.reset()
             if test_mode:
                 run_until_stage2(game, [None, opp_player, current_mcts_player], verbose=1)
-                # self.mcts_player.reset_player(1)
-                # self_play_until_stage2_with_statistics(game, self.mcts_player, verbose=1)
                 winner = game.stage1_winner()
                 print('winner : ' + str(winner))
             else:
                 run_until_stage2(game, [None, opp_player, current_mcts_player], verbose=0)
                 winner = game.stage1_winner()
             win_cnt[winner] += 1
+        # The mcts player cannot win currently.
+        # The best of mcts player can do in stage1 currently is behaving in the same way as GreedyPlayer
+        # We may use the reword of stage2 model as the result of stage1 while training stage1 model. But it is a bit
+        # too time consuming
         win_ratio = 1.0 * (win_cnt[2] + 0.5 * win_cnt[0]) / n_games
         print("num_playouts:{}, win: {}, lose: {}, tie:{}".format(
             self.pure_mcts_playout_num,

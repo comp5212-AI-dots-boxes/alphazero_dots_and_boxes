@@ -57,12 +57,14 @@ class TreeNode(object):
         """Like a call to update(), but applied recursively for all ancestors.
         """
         # If it is not root, this node's parent should be updated first.
-        if self._parent:
-            if self._parent.player == self.player:
-                self._parent.update_recursive(leaf_value)
-            else:
-                self._parent.update_recursive(-leaf_value)
+        # the score of root node is meaningless
+        if self._parent is None:
+            return
+        # self._parent.player is the player who do this action and this player
+        if self._parent.player != self.player:
+            leaf_value = -leaf_value
         self.update(leaf_value)
+        self._parent.update_recursive(leaf_value)
 
     def get_value(self, c_puct):
         """Calculate and return the value for this node.
@@ -130,7 +132,7 @@ class MCTS(object):
                 leaf_value = 1.0 if winner == state.current_player_id else -1.0
 
         # Update value and visit count of nodes in this traversal.
-        node.update_recursive(-leaf_value)
+        node.update_recursive(leaf_value)
 
     def get_move_probs(self, state: DotsAndBoxes, temp=1e-3):
         """Run all playouts sequentially and return the available actions and
