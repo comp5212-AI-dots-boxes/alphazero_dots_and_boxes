@@ -6,10 +6,14 @@ import numpy as np
 
 from Game import GameBase
 from dots_and_boxes import DotsAndBoxesPlayerBase, DotsAndBoxes
+from dots_and_boxes import PolicyValueNet
+from dots_and_boxes.MCTS_alphazero import MCTSPlayer as MCTSStage2Player
+from dots_and_boxes.MCTS_alphazero_stage1 import MCTSStage1Player
 
 
 class RandomPlayer(DotsAndBoxesPlayerBase):
     def __init__(self):
+        super(RandomPlayer, self).__init__()
         self.player = None
 
     def set_player_ind(self, p):
@@ -27,6 +31,7 @@ class RandomPlayer(DotsAndBoxesPlayerBase):
 
 class GreedyPlayer(DotsAndBoxesPlayerBase):
     def __init__(self):
+        super(GreedyPlayer, self).__init__()
         self.player = None
 
     def set_player_ind(self, p):
@@ -577,3 +582,31 @@ class MoreGreedyPlayer(DotsAndBoxesPlayerBase):
 
     def __str__(self):
         return "MoreGreedy {}".format(self.player)
+
+
+class StagedMCTSPlayer(DotsAndBoxesPlayerBase):
+    def __init__(self, game_size, player, stage1_model, stage2_model, c_puct=5, n_playout=400):
+        super(StagedMCTSPlayer, self).__init__()
+        self.size = game_size
+        self.player = player
+        self.policy_net_stage1 = PolicyValueNet(self.size, 1, stage1_model)
+        self.policy_net_stage2 = PolicyValueNet(self.size, 2, stage2_model)
+        self.stage1_player = MCTSStage1Player(policy_value_function=self.policy_net_stage1.policy_value_fn,
+                                              player=self.player, c_puct=c_puct, n_playout=n_playout)
+        self.stage2_player = MCTSStage2Player(policy_value_function=self.policy_net_stage2.policy_value_fn,
+                                              player=self.player, c_puct=c_puct, n_playout=n_playout)
+
+    def set_player_ind(self, p):
+        self.player = p
+
+    def get_action(self, state: DotsAndBoxes, **kwargs):
+        if state.stage1():
+            return self.stage1_player.get_action(state)
+        else:
+            return self.stage2_player.get_action(state)
+
+    def copy(self):
+        return copy.deepcopy(self)
+
+    def __str__(self):
+        return "Random {}".format(self.player)

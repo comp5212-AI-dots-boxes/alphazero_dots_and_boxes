@@ -80,9 +80,6 @@ class PolicyValueNet:
 
     def create_model_stage2(self):
         # conv layers
-        # if we use the same model as stage1, the behavior becomes very weird. It will do double-cross occasionally,
-        # even in the last half-open chain, and that causes the lose. Therefore, a simple model makes it behaviors as a
-        # normal greedy player
         in_x = network = Input(self.input_shape)
         network = Conv2D(filters=32, kernel_size=(3, 3), padding="same", data_format="channels_first",
                          activation="relu", kernel_regularizer=l2(self.l2_const))(network)
@@ -90,20 +87,21 @@ class PolicyValueNet:
                          activation="relu", kernel_regularizer=l2(self.l2_const))(network)
         network = Conv2D(filters=128, kernel_size=(3, 3), padding="same", data_format="channels_first",
                          activation="relu", kernel_regularizer=l2(self.l2_const))(network)
+        network = Conv2D(filters=256, kernel_size=(3, 3), padding="same", data_format="channels_first",
+                         activation="relu", kernel_regularizer=l2(self.l2_const))(network)
         # action policy layers
         policy_net = Conv2D(filters=8, kernel_size=(1, 1), data_format="channels_first", activation="relu",
                             kernel_regularizer=l2(self.l2_const))(network)
         policy_net = Flatten()(policy_net)
-        # policy_net = Dense(128, activation="relu", kernel_regularizer=l2(self.l2_const))(policy_net)
+        policy_net = Dense(128, activation="relu", kernel_regularizer=l2(self.l2_const))(policy_net)
         self.policy_net = Dense(self.action_spec, activation="softmax", kernel_regularizer=l2(self.l2_const))(
             policy_net)
         # state value layers
         value_net = Conv2D(filters=4, kernel_size=(1, 1), data_format="channels_first", activation="relu",
                            kernel_regularizer=l2(self.l2_const))(network)
         value_net = Flatten()(value_net)
-        value_net = Dense(64, kernel_regularizer=l2(self.l2_const))(value_net)
-        # value_net = Dense(128, kernel_regularizer=l2(self.l2_const))(value_net)
-        # value_net = Dense(32, kernel_regularizer=l2(self.l2_const))(value_net)
+        value_net = Dense(128, kernel_regularizer=l2(self.l2_const))(value_net)
+        value_net = Dense(32, kernel_regularizer=l2(self.l2_const))(value_net)
         self.value_net = Dense(1, activation="tanh", kernel_regularizer=l2(self.l2_const))(value_net)
 
         self.model = keras.models.Model(in_x, [self.policy_net, self.value_net])
