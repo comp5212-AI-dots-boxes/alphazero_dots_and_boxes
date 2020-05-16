@@ -62,7 +62,7 @@ class TreeNode(object):
                 self._parent.update_recursive(leaf_value)
             else:
                 self._parent.update_recursive(-leaf_value)
-        self.update(-leaf_value)
+        self.update(leaf_value)
 
     def get_value(self, c_puct):
         """Calculate and return the value for this node.
@@ -118,13 +118,13 @@ class MCTS(object):
         # for the current player.
         assert node.player == state.current_player_id
         action_probs, leaf_value = self._policy(state)
-        # Check for end of game.
-        if state.is_playing():
+
+        # Check for end of stage1
+        if state.stage1():
             node.expand(action_probs, state)
         else:
-            winner = state.get_winner()
-            # for end state，return the "true" leaf_value
-            if winner == 0:  # tie
+            winner = state.stage1_winner()
+            if winner == 0:
                 leaf_value = 0.0
             else:
                 leaf_value = 1.0 if winner == state.current_player_id else -1.0
@@ -165,11 +165,11 @@ class MCTS(object):
         return "MCTS"
 
 
-class MCTSPlayer(DotsAndBoxesPlayerBase):
+class MCTSStage1Player(DotsAndBoxesPlayerBase):
     """AI player based on MCTS"""
 
     def __init__(self, policy_value_function, player, c_puct=5, n_playout=2000, is_selfplay=False):
-        super(MCTSPlayer, self).__init__()
+        super(MCTSStage1Player, self).__init__()
         self.player = player
         self.mcts = MCTS(policy_value_function, player, c_puct, n_playout)
         self._is_selfplay = is_selfplay

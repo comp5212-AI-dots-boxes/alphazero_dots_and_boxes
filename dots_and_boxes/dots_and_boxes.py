@@ -2,8 +2,8 @@
 The game of dots and boxes
 """
 import numpy as np
+
 from Game import GameBase, Player
-import mcts
 
 
 class DotsAndBoxesBoard:
@@ -33,6 +33,15 @@ class DotsAndBoxesBoard:
             self.available_lines = copy_dict['available_lines'].copy()
             self.last_act_line = copy_dict['last_act_line']
             self.last_act_player_id = copy_dict['last_act_player_id']
+
+    def lines_hash(self):
+        v = 0
+        for line_id in self.available_lines:
+            v = v | (1 << line_id)
+        return v
+
+    def box_occupy_hash(self):
+        pass
 
     def line_id_to_pos(self, line_id):
         if line_id >= self._half_split:
@@ -311,6 +320,33 @@ class DotsAndBoxes(GameBase):
                         for line in four_lines:
                             available_lines.discard(self.board.pos_to_line_id(line))
         return len(available_lines) > 0
+
+    def get_stage1_actions(self):
+        available_lines = self.get_available_actions().copy()
+        for x in range(self.size):
+            for y in range(self.size):
+                if self.board.boxes[x][y] == 0:
+                    # check 4 lines of this box
+                    four_lines = ((0, x, y), (1, x, y), (0, x + 1, y), (1, x, y + 1))
+                    num_empty = 4 - (
+                            self.board.lines[0][x][y] + self.board.lines[1][x][y] + self.board.lines[0][x + 1][y] +
+                            self.board.lines[1][x][y + 1])
+                    if num_empty <= 2:
+                        # it will give advantage to opponent
+                        for line in four_lines:
+                            available_lines.discard(self.board.pos_to_line_id(line))
+        return available_lines
+
+    def stage1_winner(self):
+        if self.stage1():
+            return -1
+        else:
+            winner = 0  # tie
+            if self.board.scores[1] > self.board.scores[2]:
+                winner = 1
+            elif self.board.scores[1] < self.board.scores[2]:
+                winner = 2
+            return winner
 
     def stage2(self):
         return not self.stage1()

@@ -1,12 +1,13 @@
+import pickle
+
 import keras
+import keras.backend.tensorflow_backend as tfback
+import numpy as np
+import tensorflow as tf
 from keras.layers import Conv2D, Flatten, Dense, Input
 from keras.regularizers import l2
-import numpy as np
-import pickle
-from Game import GameBase
 
-import tensorflow as tf
-import keras.backend.tensorflow_backend as tfback
+from Game import GameBase
 
 
 def _get_available_gpus():
@@ -31,7 +32,7 @@ def self_entropy(probs):
 
 class PolicyValueNet:
 
-    def __init__(self, size, model_file=None):
+    def __init__(self, size, stage, model_file=None):
         self.size = size
         self._half_split = (size + 1) * size
         self.channel_size = 7
@@ -39,15 +40,49 @@ class PolicyValueNet:
         self.input_batch_shape = (-1, self.channel_size, size + 1, size + 1)
         self.action_spec = (size + 1) * size * 2
         self.l2_const = 1e-4
-        self.create_model()
+        if stage == 1:
+            self.create_model_stage1()
+        elif stage == 2:
+            self.create_model_stage2()
         self._loss_train_op()
 
         if model_file:
             net_params = pickle.load(open(model_file, 'rb'))
             self.model.set_weights(net_params)
 
-    def create_model(self):
+    def create_model_stage1(self):
         # conv layers
+        in_x = network = Input(self.input_shape)
+        network = Conv2D(filters=32, kernel_size=(3, 3), padding="same", data_format="channels_first",
+                         activation="relu", kernel_regularizer=l2(self.l2_const))(network)
+        network = Conv2D(filters=64, kernel_size=(3, 3), padding="same", data_format="channels_first",
+                         activation="relu", kernel_regularizer=l2(self.l2_const))(network)
+        network = Conv2D(filters=128, kernel_size=(3, 3), padding="same", data_format="channels_first",
+                         activation="relu", kernel_regularizer=l2(self.l2_const))(network)
+        network = Conv2D(filters=256, kernel_size=(3, 3), padding="same", data_format="channels_first",
+                         activation="relu", kernel_regularizer=l2(self.l2_const))(network)
+        # action policy layers
+        policy_net = Conv2D(filters=8, kernel_size=(1, 1), data_format="channels_first", activation="relu",
+                            kernel_regularizer=l2(self.l2_const))(network)
+        policy_net = Flatten()(policy_net)
+        policy_net = Dense(128, activation="relu", kernel_regularizer=l2(self.l2_const))(policy_net)
+        self.policy_net = Dense(self.action_spec, activation="softmax", kernel_regularizer=l2(self.l2_const))(
+            policy_net)
+        # state value layers
+        value_net = Conv2D(filters=4, kernel_size=(1, 1), data_format="channels_first", activation="relu",
+                           kernel_regularizer=l2(self.l2_const))(network)
+        value_net = Flatten()(value_net)
+        value_net = Dense(128, kernel_regularizer=l2(self.l2_const))(value_net)
+        value_net = Dense(32, kernel_regularizer=l2(self.l2_const))(value_net)
+        self.value_net = Dense(1, activation="tanh", kernel_regularizer=l2(self.l2_const))(value_net)
+
+        self.model = keras.models.Model(in_x, [self.policy_net, self.value_net])
+
+    def create_model_stage2(self):
+        # conv layers
+        # if we use the same model as stage1, the behavior becomes very weird. It will do double-cross occasionally,
+        # even in the last half-open chain, and that causes the lose. Therefore, a simple model makes it behaviors as a
+        # normal greedy player
         in_x = network = Input(self.input_shape)
         network = Conv2D(filters=32, kernel_size=(3, 3), padding="same", data_format="channels_first",
                          activation="relu", kernel_regularizer=l2(self.l2_const))(network)
@@ -67,6 +102,8 @@ class PolicyValueNet:
                            kernel_regularizer=l2(self.l2_const))(network)
         value_net = Flatten()(value_net)
         value_net = Dense(64, kernel_regularizer=l2(self.l2_const))(value_net)
+        # value_net = Dense(128, kernel_regularizer=l2(self.l2_const))(value_net)
+        # value_net = Dense(32, kernel_regularizer=l2(self.l2_const))(value_net)
         self.value_net = Dense(1, activation="tanh", kernel_regularizer=l2(self.l2_const))(value_net)
 
         self.model = keras.models.Model(in_x, [self.policy_net, self.value_net])
@@ -81,6 +118,7 @@ class PolicyValueNet:
         output: a list of (action, probability) tuples for each available action and the score of the board state
         """
         legal_positions = list(game.get_available_actions())
+        # legal_positions = list(game.get_stage1_actions())  # for stage1 training
         current_state = game.get_current_state()
         act_probs, value = self.policy_value(current_state.reshape(self.input_batch_shape))
         act_probs = zip(legal_positions, act_probs.flatten()[legal_positions])

@@ -1,9 +1,12 @@
-from dots_and_boxes import DotsAndBoxesPlayerBase, DotsAndBoxes, DotsAndBoxesBoard
-from Game import GameBase
-import random
 import copy
-import numpy as np
 import math
+import random
+
+import numpy as np
+
+from Game import GameBase
+from dots_and_boxes import DotsAndBoxesPlayerBase, DotsAndBoxes
+
 
 class RandomPlayer(DotsAndBoxesPlayerBase):
     def __init__(self):
@@ -106,7 +109,6 @@ class HumanPlayer(object):
 
 def edges_of_box(state: DotsAndBoxes, x, y):
     board = state.board
-    four_lines = ((0, x, y), (1, x, y), (0, x + 1, y), (1, x, y + 1))
     num_empty = 4 - (board.lines[0][x][y] + board.lines[1][x][y] + board.lines[0][x + 1][y] +
                      board.lines[1][x][y + 1])
     return 4 - num_empty
@@ -114,6 +116,7 @@ def edges_of_box(state: DotsAndBoxes, x, y):
 
 class MoreGreedyPlayer(DotsAndBoxesPlayerBase):
     def __init__(self):
+        super(MoreGreedyPlayer, self).__init__()
         self.player = None
 
         self.size = -1
