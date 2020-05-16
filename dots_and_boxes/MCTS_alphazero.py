@@ -184,6 +184,11 @@ class MCTSPlayer(DotsAndBoxesPlayerBase):
         self.mcts.update_with_move(-1, player)
 
     def get_action(self, game: DotsAndBoxes, temp=1e-3, return_prob=0):
+        # if not self._is_selfplay and game.board.last_act_line is not None:
+        #     # update with the last step
+        #     self.mcts.update_with_move(game.board.last_act_line, game.board.last_act_player_id)
+        #     self.mcts._root.player = self.player
+
         sensible_moves = game.get_available_actions()
         # the pi vector returned by MCTS as in the alphaGo Zero paper
         move_probs = np.zeros(game.get_action_space())

@@ -610,3 +610,29 @@ class StagedMCTSPlayer(DotsAndBoxesPlayerBase):
 
     def __str__(self):
         return "Random {}".format(self.player)
+
+
+class MCTSPlayer(DotsAndBoxesPlayerBase):
+    def __init__(self, game_size, player, model, c_puct=5, n_playout=400):
+        super(MCTSPlayer, self).__init__()
+        self.size = game_size
+        self.player = player
+        self.policy_net = PolicyValueNet(self.size, 1, model)
+
+        # use the same structure of model, play from beginning to the end
+        # No information is used while training
+        # It achieved a 100% percent win ratio to greedy player
+        self.player = MCTSStage2Player(policy_value_function=self.policy_net.policy_value_fn,
+                                       player=self.player, c_puct=c_puct, n_playout=n_playout)
+
+    def set_player_ind(self, p):
+        self.player = p
+
+    def get_action(self, state: DotsAndBoxes, temp=1e-5, **kwargs):
+        return self.player.get_action(state, temp=temp, **kwargs)
+
+    def copy(self):
+        return copy.deepcopy(self)
+
+    def __str__(self):
+        return "Random {}".format(self.player)
