@@ -1,7 +1,6 @@
-# from MCTS_alphazero import MCTSPlayer
 from Game import GameManager
 from dots_and_boxes import DotsAndBoxes
-from dots_and_boxes.players import GreedyPlayer, MCTSPlayer as SmartMCTSPlayer
+from dots_and_boxes.players import GreedyPlayer, MCTSPlayer as SmartMCTSPlayer, StagedMCTSPlayer
 
 if __name__ == '__main__':
     p1 = GreedyPlayer()
