@@ -68,29 +68,27 @@ class Player:
 
 def self_play_with_statistics(game: GameBase, player: Player, temp=1e-3, verbose=0):
     states, mcts_probs, current_players = [], [], []
-    while True:
+    while game.is_playing():
         action, action_probs = player.get_action(game, temp=temp, return_prob=1)
-        # action = player.get_action(game, temp=temp)
         # store the data
         states.append(game.get_current_state())
         mcts_probs.append(action_probs)
         current_players.append(game.current_player_id)
         # perform a move
         game.act(action, verbose)
-        if game.is_end():
-            winner = game.get_winner()
-            # winner from the perspective of the current player of each state
-            winners_z = np.zeros(len(current_players))
-            if winner != 0:
-                winners_z[np.array(current_players) == winner] = 1.0
-                winners_z[np.array(current_players) != winner] = -1.0
+    winner = game.get_winner()
+    # winner from the perspective of the current player of each state
+    winners_z = np.zeros(len(current_players))
+    if winner != 0:
+        winners_z[np.array(current_players) == winner] = 1.0
+        winners_z[np.array(current_players) != winner] = -1.0
 
-            if verbose > 0:
-                if winner != 0:
-                    print("Game ended. Winner is player:", winner)
-                else:
-                    print("Game ended. Tie")
-            return winner, zip(states, mcts_probs, winners_z)
+    if verbose > 0:
+        if winner != 0:
+            print("Game ended. Winner is player:", winner)
+        else:
+            print("Game ended. Tie")
+    return winner, zip(states, mcts_probs, winners_z)
 
 
 class GameManager:
