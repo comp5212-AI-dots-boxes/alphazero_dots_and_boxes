@@ -10,7 +10,7 @@ Use alpha zero algorithm to master the game of dots&boxes.
 # Usage
 Please run the script `test.py` to see the output.
 
-The AlphaZero player (`SmartMCTSPlayer`) is the second player, you can change the argument `player=1` and create an AlphaZero player as the first player.
+The AlphaZero player (`SmartMCTSPlayer`) is the second player, you can change the argument `player=1` and create an AlphaZero player as the first player. Please change the list of `GameManager` at the same time.
 
 The number of playouts is 400, you can change the argument `n_playout`.
 
