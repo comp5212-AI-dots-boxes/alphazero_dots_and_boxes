@@ -7,3 +7,11 @@ Use alpha zero algorithm to master the game of dots&boxes.
 * TensorFlow
 * Keras
 
+# Usage
+Please run the script `test.py` to see the output.
+
+The AlphaZero player (`SmartMCTSPlayer`) is the second player, you can change the argument `player=1` and create an AlphaZero player as the first player.
+
+The number of playouts is 400, you can change the argument `n_playout`.
+
+To train your own model, please run `train.py`

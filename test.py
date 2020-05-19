@@ -1,11 +1,11 @@
 from Game import GameManager
 from dots_and_boxes import DotsAndBoxes
-from dots_and_boxes.players import GreedyPlayer, MCTSPlayer as SmartMCTSPlayer, StagedMCTSPlayer
+from dots_and_boxes.players import GreedyPlayer, MoreGreedyPlayer, MCTSPlayer as SmartMCTSPlayer, StagedMCTSPlayer
 
 if __name__ == '__main__':
-    p1 = GreedyPlayer()
+    p1 = MoreGreedyPlayer()
     # p2 = StagedMCTSPlayer(3, 2, '3x3-beat-greedy.model', '3x3-stage2.model', n_playout=400)
-    p2 = SmartMCTSPlayer(3, 2, '3x3-beat-greedy.model', n_playout=400)
+    p2 = SmartMCTSPlayer(3, player=2, model='3x3-best.model', n_playout=400)
     game = DotsAndBoxes(3)
     gm = GameManager(game, [None, p1, p2], 1)
     win_record = [0, 0, 0]
