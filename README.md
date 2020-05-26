@@ -15,3 +15,6 @@ The AlphaZero player (`SmartMCTSPlayer`) is the second player, you can change th
 The number of playouts is 400, you can change the argument `n_playout`.
 
 To train your own model, please run `train.py`
+
+# Acknowledgement
+Thanks for Junxiao Song's prior work https://zhuanlan.zhihu.com/p/32089487
